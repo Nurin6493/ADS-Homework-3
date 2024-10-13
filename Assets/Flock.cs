@@ -1,10 +1,12 @@
-﻿using System;
-using System.Collections;
+﻿using UnityEngine;
 using System.Collections.Generic;
-using UnityEngine;
+using System.IO;
 
 public class Flock : MonoBehaviour
 {
+    // Unity-native timing variables
+    private float startTime;
+
     public Drone agentPrefab;
     List<Drone> agents = new List<Drone>();
     public FlockBehavior behavior;
@@ -27,12 +29,17 @@ public class Flock : MonoBehaviour
     float squareAvoidanceRadius;
     public float SquareAvoidanceRadius { get { return squareAvoidanceRadius; } }
 
+    private StreamWriter csvWriter; // CSV writer
+
     // Start is called before the first frame update
     void Start()
     {
         squareMaxSpeed = maxSpeed * maxSpeed;
         squareNeighborRadius = neighborRadius * neighborRadius;
         squareAvoidanceRadius = squareNeighborRadius * avoidanceRadiusMultiplier * avoidanceRadiusMultiplier;
+
+        // Initialize the CSV file
+        InitializeCSV();
 
         for (int i = 0; i < startingCount; i++)
         {
@@ -48,59 +55,66 @@ public class Flock : MonoBehaviour
         }
     }
 
-    void BubbleSort(Drone[] arr, int n) // O(N^2)
-    {
-        int i, j;
-        Drone temp;
-        bool swapped;               // let n =10
-        for (i = 0; i < n - 1; i++)  // i=0..9
-        {
-            swapped = false;
-            for (j = 0; j < n - i - 1; j++)   // i=0: j=0..9
-                                              // i=1; j=0..8
-                                              // i=2; j=0..7
-                                              // i
-            {
-                if (arr[j].Temperature > arr[j + 1].Temperature) // check whether to swap
-                {
-
-                    // Swap arr[j] and arr[j+1]
-                    temp = arr[j];
-                    arr[j] = arr[j + 1];
-                    arr[j + 1] = temp;
-                    swapped = true;
-                }
-            }
-
-            // If no two elements were
-            // swapped by inner loop, then break
-            //if (swapped == false)
-            //    break;
-        }
-    }
-
     // Update is called once per frame
     void Update()
     {
+        // Start measuring time
+        startTime = Time.time;
+
         Drone[] drones = agents.ToArray();
-        BubbleSort(drones, drones.Length);
-        //BubbleSort(drones, drones.Length);
-        //BubbleSort(drones, drones.Length);
-        //Array.Sort(tempArray);
+
+        // Perform partitioning based on temperature
+        PartitionDronesByTemperature(drones);
 
         foreach (Drone agent in agents)
         {
-            // decide on next movement direction
+            // Get nearby objects
             List<Transform> context = GetNearbyObjects(agent);
 
+            // Calculate next move direction
             Vector2 move = behavior.CalculateMove(agent, context, this);
             move *= driveFactor;
             if (move.sqrMagnitude > squareMaxSpeed)
             {
                 move = move.normalized * maxSpeed;
             }
+
+            // Apply movement
             agent.Move(move);
         }
+
+        // Measure the frame time using Time.deltaTime
+        float deltaTime = Time.deltaTime;
+        float fps = 1.0f / deltaTime;
+
+        // Log the current time and FPS
+        string currentTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        UnityEngine.Debug.Log($"Timestamp: {currentTime} | FPS: {fps}");
+
+        // Write to CSV
+        WriteToCSV(currentTime, fps);
+    }
+
+    // O(N) partition function
+    void PartitionDronesByTemperature(Drone[] drones)
+    {
+        if (drones.Length == 0) return;
+
+        float pivotTemperature = drones[0].Temperature;
+
+        foreach (Drone drone in drones)
+        {
+            if (drone.Temperature <= pivotTemperature)
+            {
+                drone.GetComponent<SpriteRenderer>().color = Color.blue;  // Cool color
+            }
+            else
+            {
+                drone.GetComponent<SpriteRenderer>().color = Color.red;   // Warm color
+            }
+        }
+
+        Debug.Log("Partitioning done using temperature. Pivot: " + pivotTemperature);
     }
 
     List<Transform> GetNearbyObjects(Drone agent)
@@ -117,4 +131,26 @@ public class Flock : MonoBehaviour
         return context;
     }
 
+    // Initialize the CSV file
+    private void InitializeCSV()
+    {
+        string filePath = Path.Combine(Application.dataPath, "TimingResults.csv");
+
+        // Create or overwrite the CSV file and write the header
+        csvWriter = new StreamWriter(filePath, false);
+        csvWriter.WriteLine("Timestamp, FPS");
+    }
+
+    // Write timing results to the CSV file
+    private void WriteToCSV(string timestamp, float fps)
+    {
+        csvWriter.WriteLine($"{timestamp}, {fps}");
+        csvWriter.Flush(); // Ensure data is written to the file
+    }
+
+    // Cleanup on destroy
+    private void OnDestroy()
+    {
+        csvWriter.Close(); // Close the CSV writer when the script is destroyed
+    }
 }
