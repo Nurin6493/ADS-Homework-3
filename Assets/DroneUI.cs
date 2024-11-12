@@ -5,11 +5,11 @@ public class DroneUI : MonoBehaviour
 {
     public TMP_InputField idInputField;
     public TMP_Text messageOutputText;
-    public Flock flock; 
+    public Flock flock;
 
     void Start()
     {
-        flock = FindObjectOfType<Flock>(); 
+        flock = FindObjectOfType<Flock>();
     }
 
     public void OnSearchDroneButton()

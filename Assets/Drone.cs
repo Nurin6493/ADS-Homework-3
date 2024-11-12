@@ -1,15 +1,18 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(Collider2D))]
 public class Drone : MonoBehaviour
 {
-    public int Temperature { set; get; } = 0;
+    public int Temperature { get; set; } = 0;
     public int Id; // Unique ID for the drone
-    private Drone nextDrone; // Reference to the next drone in the linked list
 
-    public Drone NextDrone // Property to access the next drone
+    // For BST communication
+    public Drone LeftChild { get; set; }
+    public Drone RightChild { get; set; }
+
+    // Next drone in linked list (for movement update loop)
+    private Drone nextDrone;
+    public Drone NextDrone
     {
         get { return nextDrone; }
         set { nextDrone = value; }
@@ -21,15 +24,25 @@ public class Drone : MonoBehaviour
     private Collider2D agentCollider;
     public Collider2D AgentCollider => agentCollider;
 
-    void Start()
+    private SpriteRenderer spriteRenderer;
+
+    void Awake()
     {
         agentCollider = GetComponent<Collider2D>();
-        Debug.Log($"Drone {Id} initialized.");
+        spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
-    private void Update()
+    void Start()
     {
-        Temperature = (int)(Random.value * 100);
+        // Initialize temperature
+        Temperature = Random.Range(0, 100);
+        Debug.Log($"Drone {Id} initialized with Temperature {Temperature}.");
+    }
+
+    void Update()
+    {
+        // Randomly update temperature
+        Temperature = Random.Range(0, 100);
     }
 
     public void Initialize(Flock flock)
@@ -53,6 +66,15 @@ public class Drone : MonoBehaviour
         else
         {
             Debug.Log($"Drone {Id} received message: {message}");
+        }
+    }
+
+    // Optional: Method to change color without allocating new components
+    public void SetColor(Color color)
+    {
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.color = color;
         }
     }
 }
